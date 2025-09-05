@@ -1,0 +1,3 @@
+* integrate breastMNIST (should build a CP dataset interface here)
+* support initialization from checkpoint, init teacher from same checkpoint
+* logging? -> could use the DIET codebase for inference
