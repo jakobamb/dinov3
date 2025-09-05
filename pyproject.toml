@@ -1,3 +1,68 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dinov3"
+version = "0.0.1"
+description = "DINOv3"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {file = "LICENSE.md"}
+authors = [
+    {name = "Meta AI Research, FAIR"},
+]
+keywords = [
+    "computer vision",
+    "self-supervised learning",
+    "vision transformers",
+    "representation learning",
+    "deep learning",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: Other/Proprietary License",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "ftfy",
+    "iopath",
+    "omegaconf",
+    "pandas",
+    "regex",
+    "scikit-learn",
+    "scikit-learn-intelex",
+    "submitit",
+    "termcolor",
+    "torch",
+    "torchmetrics",
+    "torchvision",
+]
+
+[project.optional-dependencies]
+dev = [
+    "docstr-coverage==2.3.2",
+    "mypy[reports]==1.17",
+    "pylint==3.3.8",
+    "ruff==0.12.8",
+]
+
+[project.urls]
+Homepage = "https://ai.meta.com/dinov3/"
+Repository = "https://github.com/facebookresearch/dinov3"
+Documentation = "https://ai.meta.com/dinov3/"
+"Bug Tracker" = "https://github.com/facebookresearch/dinov3/issues"
+
+[tool.setuptools.packages.find]
+include = ["dinov3*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml"]
+
 [tool.mypy]
 python_version = "3.11"
 ignore_missing_imports = true

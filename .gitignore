@@ -16,3 +16,9 @@ dist/
 
 # Ignore vscode directory
 .vscode/
+
+# env
+.venv
+
+# local testing
+local_dino/
