@@ -33,20 +33,21 @@ def is_cp_dataset(s: str) -> bool:
 
 
 class CPDataset(VisionDataset):
-    def __init__(self, dataset_name, split, *args, **kwargs):
+    def __init__(self, dataset_name, split, root="./data", *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.dataset_name = dataset_name
-        self.split = split
+        self.split = split.lower()
+        self.root = root
 
         dataset = get_dataset(dataset_name, root=self.root)
-        if split == "train":
+        if self.split == "train":
             self.dataset = dataset[0]
-        elif split == "val":
+        elif self.split == "val":
             self.dataset = dataset[1]
-        elif split == "test":
+        elif self.split == "test":
             self.dataset = dataset[2]
         else:
-            raise ValueError(f"Invalid split: {split}")
+            raise ValueError(f"Invalid split: {self.split}")
 
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         if self.transforms is not None:

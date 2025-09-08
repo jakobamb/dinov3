@@ -72,6 +72,7 @@ def _parse_dataset_str(dataset_str: str):
         class_ = CPDataset
         kwargs["dataset_name"] = name
         if "split" in kwargs:
+            kwargs["split"] = kwargs["split"].lower()
             if kwargs["split"] not in ("train", "val", "test"):
                 raise ValueError(f'Invalid split "{kwargs["split"]}" for CP dataset')
         else:
