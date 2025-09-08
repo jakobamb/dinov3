@@ -98,6 +98,9 @@ distillation:
   checkpoint_path: ''
 multidistillation:
   enabled: false
+cp:
+  enabled: true
+  hf_model: 'facebook/dinov3-vitb16-pretrain-lvd1689m' 
 hrft:
   enabled: false
   checkpoint_path: ''

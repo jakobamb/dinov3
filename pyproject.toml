@@ -35,7 +35,7 @@ dependencies = [
     "pandas",
     "regex",
     "scikit-learn",
-    "scikit-learn-intelex",
+#    "scikit-learn-intelex",
     "submitit",
     "termcolor",
     "torch",

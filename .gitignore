@@ -19,6 +19,7 @@ dist/
 
 # env
 .venv
+.python-version
 
 # local testing
 local_dino/
