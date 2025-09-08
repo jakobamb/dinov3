@@ -17,10 +17,20 @@ from dinov3.configs import get_default_config
 from dinov3.data import DataAugmentationDINO
 from dinov3.fsdp.ac_compile_parallelize import ac_compile_parallelize
 from dinov3.layers.dino_head import DINOHead
-from dinov3.loss import DINOLoss, GramLoss, KoLeoLoss, KoLeoLossDistributed, iBOTPatchLoss
+from dinov3.loaders import load_huggingface_model
+from dinov3.loss import (
+    DINOLoss,
+    GramLoss,
+    KoLeoLoss,
+    KoLeoLossDistributed,
+    iBOTPatchLoss,
+)
 from dinov3.models import build_model_from_cfg
 from dinov3.train.cosine_lr_scheduler import linear_warmup_cosine_decay
-from dinov3.train.param_groups import fuse_params_groups, get_params_groups_with_decay_fsdp
+from dinov3.train.param_groups import (
+    fuse_params_groups,
+    get_params_groups_with_decay_fsdp,
+)
 from dinov3.utils import count_parameters
 
 logger = logging.getLogger("dinov3")
@@ -133,6 +143,25 @@ class SSLMetaArch(nn.Module):
 
         if cfg.distillation.enabled:
             self._setup_distillation()
+
+        # Setup continued pretraining if enabled
+        if cfg.cp.enabled:
+            # Validate that CP doesn't conflict with other features
+            if cfg.distillation.enabled:
+                raise ValueError(
+                    "Cannot use both continued pretraining (cp.enabled=True) "
+                    "and distillation (distillation.enabled=True) together"
+                )
+            if cfg.student.resume_from_teacher_chkpt:
+                raise ValueError(
+                    "Cannot use both continued pretraining (cp.enabled=True) "
+                    "and student.resume_from_teacher_chkpt at the same time"
+                )
+            if not cfg.cp.hf_model:
+                raise ValueError("cp.hf_model must be specified when cp.enabled=True")
+
+            self._setup_continued_pretraining()
+
         # No grad is needed for these two
         self.teacher.requires_grad_(False)
         self.model_ema.requires_grad_(False)
@@ -293,6 +322,33 @@ class SSLMetaArch(nn.Module):
         )
         self.teacher = nn.ModuleDict(teacher_model_dict)
 
+    def _setup_continued_pretraining(self):
+        """Setup continued pretraining by loading HuggingFace model."""
+        logger.info(f"Setting up continued pretraining with HF model: {self.cfg.cp.hf_model}")
+
+        # Load the HuggingFace model
+        hf_state_dict = load_huggingface_model(model_id=self.cfg.cp.hf_model, cfg=self.cfg)
+
+        # Load the converted weights into both student and teacher
+        # We only load the backbone weights, not the heads
+        logger.info("Loading HuggingFace weights into student and teacher models")
+
+        # Create a filtered state dict for backbone only
+        backbone_state_dict = {}
+        for key, value in hf_state_dict.items():
+            if not key.startswith(("dino_head.", "ibot_head.")):
+                backbone_state_dict[key] = value
+
+        # Load into student
+        missing_keys, unexpected_keys = self.student.load_state_dict(backbone_state_dict, strict=False)
+        logger.info(f"Student loading - Missing keys: {len(missing_keys)}, Unexpected keys: {len(unexpected_keys)}")
+
+        # Load into teacher (EMA model)
+        missing_keys, unexpected_keys = self.teacher.load_state_dict(backbone_state_dict, strict=False)
+        logger.info(f"Teacher loading - Missing keys: {len(missing_keys)}, Unexpected keys: {len(unexpected_keys)}")
+
+        logger.info("Continued pretraining setup completed")
+
     def init_weights(self) -> None:
         # All weights are set to `nan` to ensure we initialize everything explicitly
         self.student.backbone.init_weights()
@@ -300,6 +356,23 @@ class SSLMetaArch(nn.Module):
         self.student.ibot_head.init_weights()
         self.dino_loss.init_weights()
         self.ibot_patch_loss.init_weights()
+
+        # Handle continued pretraining initialization
+        if self.cfg.cp.enabled:
+            logger.info("Initializing weights with continued pretraining")
+            # Load HuggingFace weights into student and teacher
+            hf_state_dict = load_huggingface_model(model_id=self.cfg.cp.hf_model, cfg=self.cfg)
+
+            # Create a filtered state dict for backbone only
+            backbone_state_dict = {}
+            for key, value in hf_state_dict.items():
+                if not key.startswith(("dino_head.", "ibot_head.")):
+                    backbone_state_dict[key] = value
+
+            # Load into student
+            missing_keys, unexpected_keys = self.student.load_state_dict(backbone_state_dict, strict=False)
+            logger.info(f"CP Student loading - Missing: {len(missing_keys)}, Unexpected: {len(unexpected_keys)}")
+
         self.model_ema.load_state_dict(self.student.state_dict())
         if self.has_gram_teacher:
             if self.gram_ckpt is not None:
@@ -332,7 +405,11 @@ class SSLMetaArch(nn.Module):
             )
             self.model_ema.load_state_dict(self.student.state_dict())
         if self.cfg.distillation.enabled:
-            if self.cfg.distillation.checkpoint_path != "ignore":
+            if self.cfg.cp.enabled:
+                # For CP + distillation, copy student to teacher
+                logger.info("CP + distillation: copying student to teacher")
+                self.teacher.load_state_dict(self.student.state_dict())
+            elif self.cfg.distillation.checkpoint_path != "ignore":
                 logger.info(f"Loading teacher to distil from : {self.cfg.distillation.checkpoint_path}")
                 init_fsdp_model_from_checkpoint(
                     self.teacher,
@@ -397,7 +474,7 @@ class SSLMetaArch(nn.Module):
         # Gram output
         if self.gram_use_loss:
             gram_global = self.get_gram_teacher_output(
-                gram_teacher_crops.unflatten(0, (n_global_crops, B)) if gram_teacher_crops is not None else None,
+                (gram_teacher_crops.unflatten(0, (n_global_crops, B)) if gram_teacher_crops is not None else None),
                 masks=masks,
                 teacher_global=teacher_global,
                 student_global=student_global,
@@ -468,7 +545,15 @@ class SSLMetaArch(nn.Module):
             "masked_patch_centered": masked_patch_centered,  # [n_masked_patches, K]
         }
 
-    def get_gram_teacher_output(self, images, *, masks, teacher_global, student_global, student_global_crops_size):
+    def get_gram_teacher_output(
+        self,
+        images,
+        *,
+        masks,
+        teacher_global,
+        student_global,
+        student_global_crops_size,
+    ):
         # Get student patch features
         student_patches = student_global["patch_pre_head"].flatten(0, 1)  # [n_crops * B, P, D]
 
