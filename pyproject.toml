@@ -50,6 +50,12 @@ dev = [
     "pylint==3.3.8",
     "ruff==0.12.8",
 ]
+cp = [
+    "datasets<4.0.0",
+    "huggingface-hub",
+    "tqdm",
+    "medmnist",
+]
 
 [project.urls]
 Homepage = "https://ai.meta.com/dinov3/"
