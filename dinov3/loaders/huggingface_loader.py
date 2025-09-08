@@ -7,7 +7,7 @@ import logging
 from typing import Dict, Optional, Tuple
 
 import torch
-from huggingface_hub import hf_hub_download
+from transformers import AutoModel
 
 logger = logging.getLogger("dinov3")
 
@@ -34,9 +34,7 @@ def _convert_hf_keys_to_dinov3(
 
         # Convert embeddings layer
         if "embeddings.patch_embeddings.projection" in new_key:
-            new_key = new_key.replace(
-                "embeddings.patch_embeddings.projection", "patch_embed.proj"
-            )
+            new_key = new_key.replace("embeddings.patch_embeddings.projection", "patch_embed.proj")
         elif "embeddings.cls_token" in new_key:
             new_key = new_key.replace("embeddings.cls_token", "cls_token")
 
@@ -133,9 +131,7 @@ def _fuse_qkv_weights(
     return converted_state_dict
 
 
-def load_huggingface_model(
-    model_id: str, cfg, cache_dir: Optional[str] = None
-) -> Dict[str, torch.Tensor]:
+def load_huggingface_model(model_id: str, cfg, cache_dir: Optional[str] = None) -> Dict[str, torch.Tensor]:
     """
     Load a DINOv3 model from HuggingFace Hub and convert it to native DINOv3
     format.
@@ -156,9 +152,8 @@ def load_huggingface_model(
 
     try:
         # Download model files
-        model_path = hf_hub_download(
-            repo_id=model_id, filename="pytorch_model.bin", cache_dir=cache_dir
-        )
+        model = AutoModel.from_pretrained(model_id, trust_remote_code=True)
+        state_dict = model.state_dict()
 
         # Load model weights
         logger.info(f"Loading weights from {model_path}")
@@ -174,6 +169,4 @@ def load_huggingface_model(
         return converted_state_dict
 
     except Exception as e:
-        raise RuntimeError(
-            f"Failed to load HuggingFace model {model_id}: {str(e)}"
-        ) from e
+        raise RuntimeError(f"Failed to load HuggingFace model {model_id}: {str(e)}") from e
