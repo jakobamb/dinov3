@@ -8,6 +8,7 @@ import logging
 import numpy as np
 from torch import nn
 from torchvision import transforms
+import torchvision.transforms.v2 as transforms_v2
 
 from dinov3.data.transforms import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD, GaussianBlur, make_normalize_transform
 
@@ -69,6 +70,7 @@ class DataAugmentationDINO(object):
         # random resized crop and flip
         self.geometric_augmentation_global = transforms.Compose(
             [
+                transforms_v2.RGB(),  # Ensure RGB format for all images
                 transforms.RandomResizedCrop(
                     global_crop_max_size,
                     scale=global_crops_scale,
@@ -108,6 +110,7 @@ class DataAugmentationDINO(object):
 
         self.geometric_augmentation_local = transforms.Compose(
             [
+                transforms_v2.RGB(),  # Ensure RGB format for all images
                 transforms.RandomResizedCrop(
                     local_crops_size,
                     scale=local_crops_scale,
@@ -164,6 +167,9 @@ class DataAugmentationDINO(object):
     def __call__(self, image):
         output = {}
         output["weak_flag"] = True  # some residual from mugs
+
+        # Ensure image is in RGB format for all processing
+        image = transforms_v2.RGB()(image)
 
         if self.share_color_jitter:
             image = self.color_jittering(image)
