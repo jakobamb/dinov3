@@ -53,6 +53,7 @@ dev = [
 cp = [
     "datasets<4.0.0",
     "huggingface-hub",
+    "transformers",
     "tqdm",
     "medmnist",
 ]
