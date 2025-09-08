@@ -159,8 +159,7 @@ class SSLMetaArch(nn.Module):
                 )
             if not cfg.cp.hf_model:
                 raise ValueError("cp.hf_model must be specified when cp.enabled=True")
-
-            self._setup_continued_pretraining()
+            # NOTE: actual weights will be loaded in init_weights()
 
         # No grad is needed for these two
         self.teacher.requires_grad_(False)
@@ -321,33 +320,6 @@ class SSLMetaArch(nn.Module):
             nlayers=distillation_cfg.ibot.head_nlayers,
         )
         self.teacher = nn.ModuleDict(teacher_model_dict)
-
-    def _setup_continued_pretraining(self):
-        """Setup continued pretraining by loading HuggingFace model."""
-        logger.info(f"Setting up continued pretraining with HF model: {self.cfg.cp.hf_model}")
-
-        # Load the HuggingFace model
-        hf_state_dict = load_huggingface_model(model_id=self.cfg.cp.hf_model, cfg=self.cfg)
-
-        # Load the converted weights into both student and teacher
-        # We only load the backbone weights, not the heads
-        logger.info("Loading HuggingFace weights into student and teacher models")
-
-        # Create a filtered state dict for backbone only
-        backbone_state_dict = {}
-        for key, value in hf_state_dict.items():
-            if not key.startswith(("dino_head.", "ibot_head.")):
-                backbone_state_dict[key] = value
-
-        # Load into student
-        missing_keys, unexpected_keys = self.student.load_state_dict(backbone_state_dict, strict=False)
-        logger.info(f"Student loading - Missing keys: {len(missing_keys)}, Unexpected keys: {len(unexpected_keys)}")
-
-        # Load into teacher (EMA model)
-        missing_keys, unexpected_keys = self.teacher.load_state_dict(backbone_state_dict, strict=False)
-        logger.info(f"Teacher loading - Missing keys: {len(missing_keys)}, Unexpected keys: {len(unexpected_keys)}")
-
-        logger.info("Continued pretraining setup completed")
 
     def init_weights(self) -> None:
         # All weights are set to `nan` to ensure we initialize everything explicitly

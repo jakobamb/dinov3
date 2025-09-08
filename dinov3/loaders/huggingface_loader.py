@@ -155,10 +155,6 @@ def load_huggingface_model(model_id: str, cfg, cache_dir: Optional[str] = None) 
         model = AutoModel.from_pretrained(model_id, trust_remote_code=True)
         state_dict = model.state_dict()
 
-        # Load model weights
-        logger.info(f"Loading weights from {model_path}")
-        state_dict = torch.load(model_path, map_location="cpu")
-
         # Convert keys to DINOv3 format
         logger.info("Converting HuggingFace keys to DINOv3 format")
         converted_state_dict = _convert_hf_keys_to_dinov3(state_dict)
