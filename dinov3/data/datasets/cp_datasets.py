@@ -1,9 +1,35 @@
 from torchvision.datasets import VisionDataset
 from torch.utils.data import Dataset, DataLoader, Subset, random_split
 from datasets import load_dataset
+from torchvision import transforms
+from PIL import Image
+import torch
+from typing import Tuple, Any
 
 # MedMNIST datasets
 import medmnist
+
+
+def is_cp_dataset(s: str) -> bool:
+    """Check if a dataset name corresponds to a supported CP dataset."""
+    supported_datasets = [
+        "food101",
+        "fgvc_aircraft",
+        "pathmnist",
+        "chestmnist",
+        "dermamnist",
+        "octmnist",
+        "pneumoniamnist",
+        "retinamnist",
+        "breastmnist",
+        "organamnist",
+        "organcmnist",
+        "organsmnist",
+        "plantnet300k",
+        "galaxy10_decals",
+        "crop14_balance",
+    ]
+    return s.lower() in supported_datasets
 
 
 class CPDataset(VisionDataset):
@@ -44,23 +70,17 @@ def get_dataset(dataset_name, root="./data"):
 
     if dataset_name.lower() == "food101":
         # HuggingFace dataset with torchvision fallback
-        dataset = load_dataset(
-            "randall-lab/food101", trust_remote_code=True, cache_dir=root
-        )
+        dataset = load_dataset("randall-lab/food101", trust_remote_code=True, cache_dir=root)
         num_classes = 101
         input_size = dataset_stats["food101"]["input_size"]
         train_dataset_full = HFImageDataset(dataset["train"], input_size=input_size)
         test_dataset = HFImageDataset(dataset["test"], input_size=input_size)
         train_size = len(train_dataset_full) // 2
         val_size = len(train_dataset_full) - train_size
-        train_dataset, val_dataset = random_split(
-            train_dataset_full, [train_size, val_size]
-        )
+        train_dataset, val_dataset = random_split(train_dataset_full, [train_size, val_size])
     elif dataset_name.lower() == "fgvc_aircraft":
         # HuggingFace dataset
-        dataset = load_dataset(
-            "randall-lab/fgvc-aircraft", trust_remote_code=True, cache_dir=root
-        )
+        dataset = load_dataset("randall-lab/fgvc-aircraft", trust_remote_code=True, cache_dir=root)
         num_classes = 102
         input_size = dataset_stats["fgvc_aircraft"]["input_size"]
         train_dataset = HFImageDataset(dataset["train"], input_size=input_size)
@@ -75,13 +95,9 @@ def get_dataset(dataset_name, root="./data"):
         num_classes = len(info["label"])
         dataset_config = dataset_stats.get(data_flag, {})
         input_size = dataset_config.get("input_size", 224)
-        train_dataset = DataClass(
-            split="train", download=True, root=root, size=input_size
-        )
+        train_dataset = DataClass(split="train", download=True, root=root, size=input_size)
         val_dataset = DataClass(split="val", download=True, root=root, size=input_size)
-        test_dataset = DataClass(
-            split="test", download=True, root=root, size=input_size
-        )
+        test_dataset = DataClass(split="test", download=True, root=root, size=input_size)
 
     elif dataset_name.lower() == "galaxy10_decals":
         # HuggingFace dataset
@@ -92,14 +108,10 @@ def get_dataset(dataset_name, root="./data"):
         test_dataset = HFImageDataset(dataset["test"], input_size=input_size)
         train_size = len(train_dataset_full) // 2
         val_size = len(train_dataset_full) - train_size
-        train_dataset, val_dataset = random_split(
-            train_dataset_full, [train_size, val_size]
-        )
+        train_dataset, val_dataset = random_split(train_dataset_full, [train_size, val_size])
 
     else:
-        raise ValueError(
-            f"Dataset {dataset_name} not supported or MedMNIST not installed"
-        )
+        raise ValueError(f"Dataset {dataset_name} not supported or MedMNIST not installed")
 
     stats = dataset_stats.get(
         dataset_name.lower(),
@@ -275,13 +287,4 @@ DATASET_STATS = {
         "is_rgb": True,
         "num_classes": 14,
     },
-}
-
-# Default dataset fallback
-DEFAULT_DATASET_STATS = {
-    "mean": (0.5,),
-    "std": (0.5,),
-    "input_size": 224,
-    "is_rgb": False,
-    "num_classes": 10,
 }
