@@ -49,6 +49,8 @@ class CPDataset(VisionDataset):
             raise ValueError(f"Invalid split: {split}")
 
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
+        image, target = self.dataset[index]
+
         if self.transforms is not None:
             image, target = self.transforms(image, target)
 
