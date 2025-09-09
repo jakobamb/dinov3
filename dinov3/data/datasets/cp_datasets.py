@@ -6,7 +6,6 @@ from PIL import Image
 import torch
 from typing import Tuple, Any
 
-# MedMNIST datasets
 import medmnist
 
 
@@ -51,11 +50,8 @@ class CPDataset(VisionDataset):
             raise ValueError(f"Invalid split: {self.split}")
 
         if self.limit_data > 0 and self.limit_data < len(self.dataset):
-            print(
-                f"Limiting training data to {self.limit_data} samples "
-                f"(out of {len(self.dataset)})"
-            )
-            indices = torch.randperm(len(self.dataset))[:self.limit_data].tolist()
+            print(f"Limiting training data to {self.limit_data} samples (out of {len(self.dataset)})")
+            indices = torch.randperm(len(self.dataset))[: self.limit_data].tolist()
             self.dataset = Subset(self.dataset, indices)
 
     def __getitem__(self, index: int) -> Tuple[Any, Any]:

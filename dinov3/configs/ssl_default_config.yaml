@@ -63,7 +63,7 @@ gram:
   loss_weight_schedule: null  # (dict): If not None, use a schedule for the loss weight instead of `loss_weight`
 train:
   batch_size_per_gpu: 64
-  dataset_path: ImageNet:split=TRAIN
+  dataset_path: ImageNet:split=TRAIN # use limit_data to limit number of training samples
   data_config: null
   output_dir: .
   saveckp_freq: 20
