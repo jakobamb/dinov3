@@ -33,11 +33,12 @@ def is_cp_dataset(s: str) -> bool:
 
 
 class CPDataset(VisionDataset):
-    def __init__(self, dataset_name, split, root="./data", *args, **kwargs):
+    def __init__(self, dataset_name, split, root="./data", limit_data=-1, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.dataset_name = dataset_name
         self.split = split.lower()
         self.root = root
+        self.limit_data = limit_data
 
         dataset = get_dataset(dataset_name, root=self.root)
         if self.split == "train":
@@ -48,6 +49,14 @@ class CPDataset(VisionDataset):
             self.dataset = dataset[2]
         else:
             raise ValueError(f"Invalid split: {self.split}")
+
+        if self.limit_data > 0 and self.limit_data < len(self.dataset):
+            print(
+                f"Limiting training data to {self.limit_data} samples "
+                f"(out of {len(self.dataset)})"
+            )
+            indices = torch.randperm(len(self.dataset))[:self.limit_data].tolist()
+            self.dataset = Subset(self.dataset, indices)
 
     def __getitem__(self, index: int) -> Tuple[Any, Any]:
         image, target = self.dataset[index]
