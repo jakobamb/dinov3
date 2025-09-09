@@ -48,7 +48,7 @@ train:
   saveckp_freq: 20
   seed: 0
   num_workers: 10
-  OFFICIAL_EPOCH_LENGTH: 1250
+  OFFICIAL_EPOCH_LENGTH: 16
   monitor_gradient_norm: false
   chunk_schedule: []
   cache_dataset: true
