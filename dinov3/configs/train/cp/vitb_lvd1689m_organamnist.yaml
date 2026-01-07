@@ -43,8 +43,8 @@ train:
   batch_size_per_gpu: 64
   # Dataset path format: dataset_name:root=<path>:split=TRAIN:limit_data=<num>
   # This can be overridden by run_cp_training.sh script via train.dataset_path parameter
-  dataset_path: breastmnist:root=/root/data/medmnist:split=TRAIN:limit_data=1000
-  output_dir: /root/dinov3/output/breastmnist
+  dataset_path: organamnist:root=/root/data/medmnist:split=TRAIN:limit_data=1000
+  output_dir: /root/dinov3/output/organamnist
   saveckp_freq: 20
   seed: 0
   num_workers: 10
@@ -156,3 +156,4 @@ evaluation:
 checkpointing:
   period: 3750
   max_to_keep: 3
+
